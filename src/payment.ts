@@ -109,7 +109,7 @@ export const payment = async () => {
 
   const main = new ErgoBoxCandidateBuilder(
     BoxValue.from_i64(I64.from_str(amount.toString())),
-    Contract.pay_to_address(Address.from_testnet_str(recipientAddress)),
+    Contract.pay_to_address(context.testnet ? Address.from_testnet_str(recipientAddress) : Address.from_mainnet_str(recipientAddress)),
     height
   );
 
@@ -123,12 +123,22 @@ export const payment = async () => {
     ),
     Contract.pay_to_address(context.from_changeAddress.address()),
     height
-  )
+  );
 
-  boxes
+  const assets = boxes
     .map((box) => box.assets)
     .flat(1)
-    .map((asset) => {
+    .reduce((accumulate, box) => {
+      if (accumulate[box.tokenId])
+        accumulate[box.tokenId].amount += box.amount;
+      else
+        accumulate[box.tokenId] = box;
+      return accumulate;
+    }, {});
+
+  Object
+    .values(assets)
+    .map((asset: any) => {
       const tokenId = TokenId.from_str(asset.tokenId);
 
       if (asset.tokenId == assetId && assetAmount) {
