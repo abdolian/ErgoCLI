@@ -1,6 +1,7 @@
 import { confirm, select } from '@inquirer/prompts';
 
 import { burn } from './burn';
+import { history } from './history';
 import { information } from './information';
 import { issue } from './issue';
 import { payment } from './payment';
@@ -27,6 +28,10 @@ export const menu = async () => {
         name: 'Burn Tokens'
       },
       {
+        value: 'history',
+        name: 'History'
+      },
+      {
         value: 'exit',
         name: 'Exit'
       }
@@ -36,6 +41,10 @@ export const menu = async () => {
   switch (response) {
     case 'burn':
       await burn();
+      break;
+
+    case 'history':
+      await history();
       break;
 
     case 'information':

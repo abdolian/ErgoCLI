@@ -125,7 +125,13 @@ export const submitTransaction = async (body: string) => {
   process.stdout.clearLine(0);
   process.stdout.cursorTo(0);
 
-  console.log(`${context.url + '/' + id}`);
+  const url = `${context.url + '/' + id}`;
+
+  const items = await storage.getItem('history') || [];
+
+  await storage.setItem('history', [url, ...items].filter(distinct));
+
+  console.log(url);
 }
 
 export const suggest = async (config: { key: string; message: string; }) => {
