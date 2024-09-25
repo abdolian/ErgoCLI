@@ -1,6 +1,6 @@
 import { confirm } from '@inquirer/prompts';
 
-import { context } from './context';
+import { context } from '../context';
 import { mnemonic } from './mnemonic';
 
 export const environment = async () => {

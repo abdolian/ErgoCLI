@@ -6,9 +6,9 @@ import {
   NetworkPrefix
 } from 'ergo-lib-wasm-nodejs';
 
-import { context } from './context';
+import { context } from '../context';
 import { menu } from './menu';
-import { suggest } from './utils';
+import { suggest } from '../utils';
 
 export const mnemonic = async () => {
   context.mnemonic = (await suggest({
