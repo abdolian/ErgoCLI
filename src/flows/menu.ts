@@ -1,4 +1,4 @@
-import { confirm, select } from '@inquirer/prompts';
+import { select } from '@inquirer/prompts';
 
 import { burn } from './burn';
 import { history } from './history';
@@ -62,13 +62,4 @@ export const menu = async () => {
     case 'exit':
       return;
   }
-
-  const exit = await confirm({
-    message: 'Do you want to exit?',
-    default: false
-  });
-
-  if (exit) return;
-
-  await menu();
 }

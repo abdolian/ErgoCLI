@@ -1,9 +1,9 @@
 import storage from 'node-persist';
 
-import { environment } from './flows/environment';
+import { start } from './flows/start';
 
 await storage.init({
   dir: 'cache'
 });
 
-await environment();
+await start();

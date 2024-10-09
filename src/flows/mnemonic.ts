@@ -31,6 +31,4 @@ export const mnemonic = async () => {
   context.secretKey = secretKey; 
 
   console.log(`Derived the source address ${context.addressBase58}`);
-
-  await menu();
 } 
