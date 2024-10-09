@@ -1,7 +1,6 @@
 import { confirm, number } from '@inquirer/prompts';
 import {
   Address,
-  BlockHeaders,
   BoxSelection,
   BoxValue,
   Contract,
@@ -9,15 +8,10 @@ import {
   ErgoBoxCandidateBuilder,
   ErgoBoxCandidates,
   ErgoBoxes,
-  ErgoStateContext,
   I64,
-  PreHeader,
-  SecretKey,
-  SecretKeys,
   TokenAmount,
   TokenId,
-  TxBuilder,
-  Wallet
+  TxBuilder
 } from 'ergo-lib-wasm-nodejs';
 
 import { context } from '../context';
@@ -29,7 +23,9 @@ import {
   fetchUnspentBoxes,
   fetchAssets,
   getAssetId,
-  submitTransaction
+  submitTransaction,
+  signTransaction,
+  numberToBoxValue
 } from '../utils';
 
 export const payment = async () => {
@@ -50,20 +46,20 @@ export const payment = async () => {
     default: false
   });
 
-  const assetId = addAsset && await getAssetId();
+  const assetId = addAsset && await getAssetId(context.api, context.addressBase58);
 
   const assetAmount = addAsset && assetId && (await number({
     message: 'Asset amount',
     required: true,
   }))!;
 
-  const height = await fetchCurrentHeight(true);
+  const height = await fetchCurrentHeight(context.api, true);
 
-  const blocks = await fetchLatestBlocks(true);
+  const blocks = await fetchLatestBlocks(context.api, true);
 
-  const boxes = await fetchUnspentBoxes(true);
+  const boxes = await fetchUnspentBoxes(context.api, context.addressBase58, true);
 
-  const assets = await fetchAssets(true);
+  const assets = await fetchAssets(context.api, context.addressBase58, true);
 
   const inputs = new BoxSelection(
     ErgoBoxes.from_boxes_json(boxes),
@@ -73,7 +69,7 @@ export const payment = async () => {
   const outputs = ErgoBoxCandidates.empty();
 
   const main = new ErgoBoxCandidateBuilder(
-    BoxValue.from_i64(I64.from_str(amount.toString())),
+    numberToBoxValue(amount),
     Contract.pay_to_address(context.testnet ? Address.from_testnet_str(recipientAddress) : Address.from_mainnet_str(recipientAddress)),
     height
   );
@@ -84,7 +80,7 @@ export const payment = async () => {
         boxes.reduce((total, box) => total += box.value, - main.value().as_i64().as_num() - fee).toString()
       )
     ),
-    Contract.pay_to_address(context.from_changeAddress.address()),
+    context.contract,
     height
   );
 
@@ -125,30 +121,13 @@ export const payment = async () => {
     inputs,
     outputs,
     height,
-    BoxValue.from_i64(I64.from_str(fee.toString())),
-    context.from_changeAddress.address()
+    numberToBoxValue(fee),
+    context.address
   );
 
   const unsignedTransaction = builder.build();
 
-  const blockHeaders = BlockHeaders.from_json(blocks);
-  const preHeader = PreHeader.from_block_header(blockHeaders.get(0));
-  const stateCtx = new ErgoStateContext(preHeader, blockHeaders);
-
-  const from_dlogSecret = SecretKey.dlog_from_bytes(context.from_changeSecretKey.secret_key_bytes());
-  const from_secretKeys = new SecretKeys();
-  from_secretKeys.add(from_dlogSecret);
-
-  const from_wallet = Wallet.from_secrets(from_secretKeys);
-
-  const inputBoxes = ErgoBoxes.from_boxes_json(boxes);
-  const dataInputs = ErgoBoxes.empty();
-
-  const signedTransaction = from_wallet.sign_transaction(stateCtx, unsignedTransaction, inputBoxes, dataInputs);
-
-  console.log('Outputs');
-
-  console.table(signedTransaction.to_js_eip12().outputs, ['boxId', 'value']);
+  const signedTransaction = signTransaction(blocks, boxes, unsignedTransaction, context.secretKey, true);
 
   const sure = await confirm({
     message: 'Are you sure you want to submit the transaction?',
@@ -157,5 +136,5 @@ export const payment = async () => {
 
   if (!sure) return;
 
-  await submitTransaction(signedTransaction.to_json());
+  await submitTransaction(context.api, signedTransaction.to_json());
 }

@@ -1,5 +1,18 @@
 import { input, number, search, select } from '@inquirer/prompts';
-import { TxBuilder } from 'ergo-lib-wasm-nodejs';
+import {
+  BlockHeaders,
+  BoxValue,
+  ErgoBoxes,
+  ErgoStateContext,
+  ExtSecretKey,
+  I64,
+  PreHeader,
+  SecretKey,
+  SecretKeys,
+  TxBuilder,
+  UnsignedTransaction,
+  Wallet
+} from 'ergo-lib-wasm-nodejs';
 import storage from 'node-persist';
 
 import { context } from './context';
@@ -8,10 +21,10 @@ export const distinct = (value, index, array) => {
   return array.indexOf(value) === index;
 }
 
-export const fetchAssets = async (log?: boolean) => {
+export const fetchAssets = async (api: string, address: string, log?: boolean) => {
   log && process.stdout.write('Assets ...');
 
-  const boxes = await fetch(`${context.api}/boxes/unspent/byAddress/${context.from_changeAddressBase58}`)
+  const boxes = await fetch(`${api}/boxes/unspent/byAddress/${address}`)
     .then((response) => response.json())
     .then((response) => response.items);
 
@@ -36,10 +49,10 @@ export const fetchAssets = async (log?: boolean) => {
   return assets;
 }
 
-export const fetchCurrentHeight = async (log?: boolean) => {
+export const fetchCurrentHeight = async (api: string, log?: boolean) => {
   log && process.stdout.write('Current height ...');
 
-  const height = await fetch(`${context.api}/networkState`)
+  const height = await fetch(`${api}/networkState`)
     .then((response) => response.json())
     .then((response) => response.height);
 
@@ -51,10 +64,10 @@ export const fetchCurrentHeight = async (log?: boolean) => {
   return height;
 }
 
-export const fetchLatestBlocks = async (log?: boolean) => {
+export const fetchLatestBlocks = async (api: string, log?: boolean) => {
   log && process.stdout.write('Latest blocks ...');
 
-  const blocks = await fetch(`${context.api}/blocks/headers?limit=10`)
+  const blocks = await fetch(`${api}/blocks/headers?limit=10`)
     .then((response) => response.json())
     .then((response) => response.items);
 
@@ -66,10 +79,10 @@ export const fetchLatestBlocks = async (log?: boolean) => {
   return blocks as any[];
 }
 
-export const fetchUnspentBoxes = async (log?: boolean) => {
+export const fetchUnspentBoxes = async (api: string, address: string, log?: boolean) => {
   log && process.stdout.write('Unspent boxes ...');
 
-  const boxes = await fetch(`${context.api}/boxes/unspent/byAddress/${context.from_changeAddressBase58}`)
+  const boxes = await fetch(`${api}/boxes/unspent/byAddress/${address}`)
     .then((response) => response.json())
     .then((response) => response.items);
 
@@ -83,10 +96,10 @@ export const fetchUnspentBoxes = async (log?: boolean) => {
   return boxes as any[];
 }
 
-export const getAssetId = async () => {
+export const getAssetId = async (api: string, address: string) => {
   process.stdout.write('Assets ...');
 
-  const assets = await fetchAssets();
+  const assets = await fetchAssets(api, address);
 
   process.stdout.clearLine(0);
   process.stdout.cursorTo(0);
@@ -109,11 +122,38 @@ export const getFee = async () => {
   }) as number;
 }
 
-export const submitTransaction = async (body: string) => {
+export const numberToBoxValue = (amount: number) => {
+  return BoxValue.from_i64(I64.from_str(amount.toString()))
+}
+
+export const signTransaction = (blocks: any[], boxes: any[], unsignedTransaction: UnsignedTransaction, secretKey: ExtSecretKey, log?: boolean) => {
+  const blockHeaders = BlockHeaders.from_json(blocks);
+  const preHeader = PreHeader.from_block_header(blockHeaders.get(0));
+  const stateCtx = new ErgoStateContext(preHeader, blockHeaders);
+
+  const from_dlogSecret = SecretKey.dlog_from_bytes(secretKey.secret_key_bytes());
+  const from_secretKeys = new SecretKeys();
+  from_secretKeys.add(from_dlogSecret);
+
+  const from_wallet = Wallet.from_secrets(from_secretKeys);
+
+  const inputBoxes = ErgoBoxes.from_boxes_json(boxes);
+  const dataInputs = ErgoBoxes.empty();
+
+  const signedTransaction = from_wallet.sign_transaction(stateCtx, unsignedTransaction, inputBoxes, dataInputs);
+
+  log && console.log('Outputs');
+
+  log && console.table(signedTransaction.to_js_eip12().outputs, ['boxId', 'value']);
+
+  return signedTransaction;
+}
+
+export const submitTransaction = async (api: string, body: string) => {
   process.stdout.write('Submitting ...');
 
   const id = await fetch(
-    `${context.api}/mempool/transactions/submit`,
+    `${api}/mempool/transactions/submit`,
     {
       method: 'post',
       body

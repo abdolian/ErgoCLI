@@ -1,4 +1,5 @@
 import {
+  Contract,
   DerivationPath,
   ExtSecretKey,
   Mnemonic,
@@ -16,19 +17,20 @@ export const mnemonic = async () => {
     message: 'Enter your mnemonic',
   }))!;
 
-  const from_seed = Mnemonic.to_seed(context.mnemonic, '');
-  const from_rootSecret = ExtSecretKey.derive_master(from_seed);
-  const from_changePath = DerivationPath.new(0, new Uint32Array([0]));
-  const from_changeSecretKey = from_rootSecret.derive(from_changePath);
-  const from_changePubKey = from_changeSecretKey.public_key();
-  const from_changeAddress = NetworkAddress.new(context.testnet ? NetworkPrefix.Testnet : NetworkPrefix.Mainnet, from_changePubKey.to_address());
-  const from_changeAddressBase58 = from_changeAddress.to_base58();
+  const seed = Mnemonic.to_seed(context.mnemonic, '');
+  const rootSecret = ExtSecretKey.derive_master(seed);
+  const path = DerivationPath.new(0, new Uint32Array([0]));
+  const secretKey = rootSecret.derive(path);
+  const pubKey = secretKey.public_key();
+  const networkAddress = NetworkAddress.new(context.testnet ? NetworkPrefix.Testnet : NetworkPrefix.Mainnet, pubKey.to_address());
+  const address = networkAddress.address();
 
-  context.from_changeSecretKey = from_changeSecretKey;
-  context.from_changeAddress = from_changeAddress;
-  context.from_changeAddressBase58 = from_changeAddressBase58;
+  context.address = address;
+  context.addressBase58 = networkAddress.to_base58();
+  context.contract = Contract.pay_to_address(address);
+  context.secretKey = secretKey; 
 
-  console.log(`Derived the source address ${from_changeAddressBase58}`);
+  console.log(`Derived the source address ${context.addressBase58}`);
 
   await menu();
 } 

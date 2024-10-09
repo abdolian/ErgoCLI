@@ -1,13 +1,14 @@
-import { ExtSecretKey, NetworkAddress } from 'ergo-lib-wasm-nodejs';
+import { Address, Contract, ExtSecretKey, NetworkAddress } from 'ergo-lib-wasm-nodejs';
 
 interface Context {
   testnet: boolean;
   api: string;
   url: string;
   mnemonic: string;
-  from_changeAddressBase58: string;
-  from_changeAddress: NetworkAddress;
-  from_changeSecretKey: ExtSecretKey;
+  contract: Contract;
+  address: Address;
+  addressBase58: string;
+  secretKey: ExtSecretKey;
 }
 
 export const context: Context = {} as any;

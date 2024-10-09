@@ -1,10 +1,10 @@
 import { context } from '../context';
-import { fetchAssets,fetchUnspentBoxes } from '../utils';
+import { fetchAssets, fetchUnspentBoxes } from '../utils';
 
 export const information = async () => {
   process.stdout.write('Balance ...');
 
-  const boxes = await fetchUnspentBoxes();
+  const boxes = await fetchUnspentBoxes(context.api, context.addressBase58);
 
   process.stdout.clearLine(0);
   process.stdout.cursorTo(0);
@@ -13,9 +13,9 @@ export const information = async () => {
 
   console.log('Addresses');
 
-  console.table([context.from_changeAddressBase58]);
+  console.table([context.addressBase58]);
 
-  await fetchUnspentBoxes(true);
+  await fetchUnspentBoxes(context.api, context.addressBase58, true);
 
-  await fetchAssets(true);
+  await fetchAssets(context.api, context.addressBase58, true);
 }
